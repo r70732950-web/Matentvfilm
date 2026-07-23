@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Maten TV - VOD</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ڕێکخستنە سەرەتاییەکان */
+        :root {
+            --bg-color: #000000;
+            --card-bg: #111111;
+            --gold-color: #f6ad55;
+            --text-color: #e2e8f0;
+            --accent-color: #e53e3e;
+        }
+
+        body {
+            margin: 0; padding: 0; background-color: var(--bg-color);
+            color: var(--text-color); font-family: sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* دوگمەکانی گۆڕین (فیلم / زنجیرە) */
+        .vod-tabs {
+            display: flex; justify-content: center; gap: 15px;
+            margin: 20px;
+        }
+        .vod-tab {
+            background: transparent; color: #a0aec0;
+            border: 2px solid #333; padding: 10px 30px;
+            border-radius: 25px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.3s; width: 120px;
+        }
+        .vod-tab.active {
+            background: var(--gold-color); color: #000;
+            border-color: var(--gold-color); box-shadow: 0 4px 15px rgba(246, 173, 85, 0.4);
+        }
+
+        /* بەشی جۆرەکانی فیلم (بە شێوەی داینامیک) */
+        .category-scroll {
+            display: flex; overflow-x: auto; gap: 10px;
+            padding: 0 15px 10px 15px; margin-bottom: 10px;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+        }
+        .category-scroll::-webkit-scrollbar { display: none; }
+        
+        .category-btn {
+            background-color: #1a202c; color: #a0aec0;
+            border: 1px solid #333; padding: 8px 20px;
+            border-radius: 20px; font-size: 14px; font-weight: bold;
+            white-space: nowrap; cursor: pointer; transition: 0.3s;
+        }
+        .category-btn.active {
+            background-color: var(--gold-color); color: #000;
+            border-color: var(--gold-color);
+        }
+
+        /* سەردێڕی بەشەکان */
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 15px; margin-top: 15px; margin-bottom: 15px;
+        }
+        .section-title { font-size: 18px; font-weight: bold; color: var(--gold-color); }
+
+        /* شێوازی کارتەکان */
+        .movie-card {
+            cursor: pointer;
+            position: relative; transition: transform 0.2s;
+        }
+        .movie-card:active { transform: scale(0.95); }
+        .movie-title {
+            font-size: 12px; text-align: center; margin-top: 5px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .movie-poster {
+            width: 100%; border-radius: 12px;
+            object-fit: cover; border: 2px solid #222;
+        }
+
+        /* جوڵەی ئاسۆیی بۆ فیلمەکان */
+        .horizontal-scroll {
+            display: flex; overflow-x: auto; gap: 12px;
+            padding: 0 15px 15px 15px; scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+        }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        .horizontal-scroll .movie-card {
+            min-width: 110px; width: 110px;
+            scroll-snap-align: start;
+        }
+        .horizontal-scroll .movie-poster { height: 160px; }
+        .horizontal-scroll .more-card {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; background: #111; border: 2px dashed #444;
+            border-radius: 12px; min-width: 110px; height: 160px;
+            color: var(--gold-color); font-weight: bold; cursor: pointer;
+            scroll-snap-align: start;
+        }
+
+        /* شێوازی شەبەکەیی بۆ زنجیرەکان و جۆرە دیاریکراوەکانی فیلم */
+        .items-grid {
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 12px;
+            padding: 0 15px 15px 15px;
+        }
+        .items-grid .movie-card { width: 100%; }
+        .items-grid .movie-poster { aspect-ratio: 2 / 3; }
+
+        /* مۆدالی زانیارییەکان */
+        .details-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 3000;
+            display: none; flex-direction: column; overflow-y: auto;
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .details-header { position: relative; width: 100%; height: 250px; }
+        .details-cover { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
+        .details-header::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 100px;
+            background: linear-gradient(to top, var(--bg-color), transparent);
+        }
+        .close-btn {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0,0,0,0.6); color: white; border: none;
+            width: 40px; height: 40px; border-radius: 50%; font-size: 18px;
+            cursor: pointer; z-index: 10;
+        }
+        .details-info { padding: 20px; position: relative; z-index: 5; margin-top: -50px; }
+        .details-title { font-size: 24px; font-weight: bold; margin: 0 0 10px 0; color: white; }
+        .details-desc { font-size: 14px; color: #a0aec0; line-height: 1.6; }
+        
+        .play-btn {
+            width: 100%; padding: 15px; background: linear-gradient(45deg, #f6ad55, #ed8936);
+            border: none; border-radius: 12px; color: #000; font-size: 16px; font-weight: bold;
+            margin-top: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+
+        /* لیستی ئەڵقەکان */
+        .episodes-section { display: none; padding: 20px; border-top: 1px solid #333; margin-top: 10px; }
+        .episodes-title { font-size: 16px; font-weight: bold; color: var(--gold-color); margin-bottom: 15px; }
+        .episodes-grid-btns { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; }
+        .episode-btn {
+            background: #1a202c; border: 1px solid #4a5568; color: white;
+            padding: 12px 0; border-radius: 8px; font-size: 16px; font-weight: bold;
+            text-align: center; cursor: pointer; transition: 0.2s;
+        }
+        .episode-btn:active, .episode-btn.active {
+            background: var(--gold-color); color: #000; border-color: var(--gold-color);
+        }
+
+        /* مۆدالی زمانەکان */
+        .lang-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); z-index: 4000;
+            display: none; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .lang-modal-box {
+            background: #1a202c; width: 85%; max-width: 320px;
+            border-radius: 15px; padding: 20px; text-align: center;
+            border: 1px solid #4a5568; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: popIn 0.3s ease-out;
+        }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .lang-modal-title { font-size: 18px; font-weight: bold; color: white; margin-bottom: 20px; }
+        .lang-btn {
+            display: block; width: 100%; padding: 12px; margin-bottom: 10px;
+            background: #2d3748; color: white; border: 1px solid #4a5568;
+            border-radius: 10px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
+        }
+        .lang-btn:active { background: var(--gold-color); color: #000; border-color: var(--gold-color); }
+        .lang-close-btn {
+            display: block; width: 100%; padding: 12px; margin-top: 20px;
+            background: transparent; color: #fc8181; border: none;
+            font-size: 16px; cursor: pointer; text-decoration: underline;
+        }
+        #loading-message { text-align: center; padding: 50px; color: var(--gold-color); font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <!-- دوگمەکانی فیلم و زنجیرە -->
+    <div class="vod-tabs">
+        <button class="vod-tab active" id="tab-movies" onclick="switchMainTab('movies')">فیلم</button>
+        <button class="vod-tab" id="tab-series" onclick="switchMainTab('series')">زنجیرە</button>
+    </div>
+
+    <!-- پەیامی چاوەڕوانی کاتێک داتا لە فایەربەیسەوە دێت -->
+    <div id="loading-message">
+        <i class="fas fa-spinner fa-spin"></i> خەریکی هێنانی زانیارییەکانە...
+    </div>
+
+    <!-- سەرەتا: بەشی فیلمەکان -->
+    <div id="movies-container" style="display: none;">
+        <!-- دوگمەی جۆرەکانی فیلم (لێرەدا ئۆتۆماتیکی دروست دەبن) -->
+        <div class="category-scroll" id="dynamic-categories"></div>
+
+        <!-- سڵایدەری فیلمەکان بەپێی بەشەکان -->
+        <div id="movies-all-sections"></div>
+
+        <!-- بینینی هەموو فیلمەکانی جۆرێک بە شێوازی شەبەکەیی -->
+        <div id="movies-single-category" style="display: none;">
+            <div class="section-header">
+                <div class="section-title" id="single-cat-title">ناوی بەش</div>
+            </div>
+            <div class="items-grid" id="single-cat-grid"></div>
+        </div>
+    </div>
+
+    <!-- سەرەتا: بەشی زنجیرەکان (تەنها یەک شاشەی تێکەڵە) -->
+    <div id="series-container" style="display: none;">
+        <div class="section-header">
+            <div class="section-title">هەموو زنجیرەکان</div>
+        </div>
+        <div class="items-grid" id="series-grid">
+            <!-- زنجیرەکان لێرە دروست دەبن -->
+        </div>
+    </div>
+
+    <!-- مۆدالی زانیاریەکان -->
+    <div id="detailsModal" class="details-modal">
+        <div class="details-header">
+            <button class="close-btn" onclick="closeDetails()"><i class="fas fa-times"></i></button>
+            <img src="" class="details-cover" id="detail-cover">
+        </div>
+        
+        <div class="details-info">
+            <h1 class="details-title" id="detail-title">ناوی بەرهەم</h1>
+            <p class="details-desc" id="detail-desc">وەسفی بەرهەم...</p>
+            
+            <button class="play-btn" id="play-btn">
+                <i class="fas fa-play"></i> پەخشکردن
+            </button>
+        </div>
+
+        <div class="episodes-section" id="episodes-section">
+            <div class="episodes-title">هەڵبژاردنی ئەڵقە:</div>
+            <div class="episodes-grid-btns" id="episodes-grid">
+                <!-- ئەڵقەکان لێرە دروست دەبن -->
+            </div>
+        </div>
+    </div>
+
+    <!-- مۆدالی هەڵبژاردنی زمان / ژێرنووس -->
+    <div id="languageModal" class="lang-modal-overlay">
+        <div class="lang-modal-box">
+            <div class="lang-modal-title">هەڵبژاردنی زمان یان ژێرنووس</div>
+            <button class="lang-btn" id="btn-lang-badini">کوردی بادینی</button>
+            <button class="lang-btn" id="btn-lang-sorani">کوردی سۆرانی</button>
+            <button class="lang-btn" id="btn-lang-arabic">عەرەبی</button>
+            <button class="lang-btn" id="btn-lang-english">ئینگلیزی</button>
+            <button class="lang-close-btn" onclick="closeLanguageModal()">پاشگەزبوونەوە</button>
+        </div>
+    </div>
+
+    <!-- بەستنەوەی فایەربەیس و لۆژیکی وێبسایتەکە -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // زانیارییەکانی فایەربەیسەکەت
+        const firebaseConfig = {
+            apiKey: "AIzaSyAFOGg3Of1hSZ9W-o6WA6TGy8SGyQJ8H6Y",
+            authDomain: "matenfelm.firebaseapp.com",
+            projectId: "matenfelm",
+            storageBucket: "matenfelm.firebasestorage.app",
+            messagingSenderId: "126597403961",
+            appId: "1:126597403961:web:8d5f820f210a806de2c4e8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // گۆڕاوەکان بۆ خەزنکردنی داتاکان
+        let contentMap = {}; // بۆ ئەوەی هەرکات کلیکت کرد زانیارییەکانی بدۆزێتەوە
+        let allMovies = [];
+        let allSeries = [];
+        let availableCategories = new Set(); // جۆرەکان (کوردی، تورکی...) بەبێ دووبارەبوونەوە
+
+        // هێنانە خوارەوەی زانیارییەکان لە فایەربەیسەوە
+        async function fetchContent() {
+            try {
+                const q = query(collection(db, "movies"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    data.id = doc.id;
+                    contentMap[doc.id] = data; // پاشەکەوتکردنی لەناو نەخشەکە
+
+                    if (data.type === 'movie') {
+                        allMovies.push(data);
+                        if(data.category) availableCategories.add(data.category); // کۆکردنەوەی جۆرەکان
+                    } else if (data.type === 'series') {
+                        allSeries.push(data);
+                    }
+                });
+
+                // شاردنەوەی پەیامی لۆدینگ و پیشاندانی بەشی فیلمەکان
+                document.getElementById('loading-message').style.display = 'none';
+                document.getElementById('movies-container').style.display = 'block';
+
+                buildUI();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById('loading-message').innerHTML = "کێشەیەک لە هێنانی زانیارییەکان هەیە!";
+            }
+        }
+
+        // دروستکردنی شاشەکان دوای هێنانی داتا
+        function buildUI() {
+            buildMovieCategories();
+            buildMoviesAllView();
+            buildSeriesGrid();
+        }
+
+        // 1. دروستکردنی دوگمەی جۆرەکان لە سەرەوە بەپێی ئەوەی لە فایەربەیس هەیە
+        function buildMovieCategories() {
+            const catContainer = document.getElementById('dynamic-categories');
+            let html = `<button class="category-btn active" data-cat="all" onclick="window.changeMovieCategory('all')">هەمووی</button>`;
+            
+            availableCategories.forEach(cat => {
+                html += `<button class="category-btn" data-cat="${cat}" onclick="window.changeMovieCategory('${cat}')">${cat}</button>`;
+            });
+            
+            catContainer.innerHTML = html;
+        }
+
+        // 2. دروستکردنی سڵایدەرەکان بۆ بەشی (هەمووی) فیلمەکان
+        function buildMoviesAllView() {
+            const allSections = document.getElementById('movies-all-sections');
+            let html = '';
+
+            // سڵایدەری نوێترین فیلمەکان
+            if(allMovies.length > 0) {
+                html += generateSliderHtml('نوێترین فیلمەکان', allMovies.slice(0, 10), 'all');
+            }
+
+            // سڵایدەر بۆ هەر جۆرێک
+            availableCategories.forEach(cat => {
+                const moviesInCat = allMovies.filter(m => m.category === cat);
+                if(moviesInCat.length > 0) {
+                    html += generateSliderHtml(`فیلمی ${cat}`, moviesInCat.slice(0, 10), cat);
+                }
+            });
+
+            allSections.innerHTML = html;
+        }
+
+        // نەخشەی یارمەتیدەر بۆ دروستکردنی یەک سڵایدەر
+        function generateSliderHtml(title, moviesArray, catName) {
+            let slider = `
+                <div class="section-header">
+                    <div class="section-title">${title}</div>
+                </div>
+                <div class="horizontal-scroll">
+            `;
+            
+            moviesArray.forEach(m => {
+                slider += `
+                    <div class="movie-card" onclick="window.openContentDetails('${m.id}')">
+                        <img src="${m.posterUrl}" class="movie-poster">
+                        <div class="movie-title">${m.title}</div>
+                    </div>
+                `;
+            });
+
+            if(moviesArray.length >= 5) { // ئەگەر لە 5 زیاتر بوو کارتی زیاتر پیشان بدە
+                slider += `
+                    <div class="more-card" onclick="window.changeMovieCategory('${catName}')">
+                        <i class="fas fa-arrow-left" style="font-size:24px; margin-bottom:10px;"></i>
+                        زیاتر
+                    </div>
+                `;
+            }
+            slider += `</div>`;
+            return slider;
+        }
+
+        // 3. دروستکردنی بەشی زنجیرەکان (هەمووی پێکەوە بەبێ جۆر)
+        function buildSeriesGrid() {
+            const grid = document.getElementById('series-grid');
+            let html = '';
+            
+            if(allSeries.length === 0) {
+                grid.innerHTML = '<p style="color:gray; grid-column: 1 / -1; text-align:center;">هیچ زنجیرەیەک بەردەست نییە</p>';
+                return;
+            }
+
+            allSeries.forEach(s => {
+                html += `
+                    <div class="movie-card" onclick="window.openContentDetails('${s.id}')">
+                        <img src="${s.posterUrl}" class="movie-poster">
+                        <div class="movie-title">${s.title}</div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+        }
+
+        // === فەنکشنە گشتییەکان بۆ ئەوەی لە HTML کاریان پێ بکرێت ===
+
+        window.changeMovieCategory = function(catName) {
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if(btn.getAttribute('data-cat') === catName || (catName === 'all' && btn.getAttribute('data-cat') === 'all')) {
+                    btn.classList.add('active');
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            });
+
+            const allView = document.getElementById('movies-all-sections');
+            const singleView = document.getElementById('movies-single-category');
+
+            if(catName === 'all') {
+                allView.style.display = 'block';
+                singleView.style.display = 'none';
+            } else {
+                allView.style.display = 'none';
+                singleView.style.display = 'block';
+                
+                // دروستکردنی شەبەکەیی بۆ ئەو بەشە دیاریکراوە
+                document.getElementById('single-cat-title').innerText = `فیلمەکانی ${catName}`;
+                const grid = document.getElementById('single-cat-grid');
+                const moviesInCat = allMovies.filter(m => m.category === catName);
+                
+                let html = '';
+                moviesInCat.forEach(m => {
+                    html += `
+                        <div class="movie-card" onclick="window.openContentDetails('${m.id}')">
+                            <img src="${m.posterUrl}" class="movie-poster">
+                            <div class="movie-title">${m.title}</div>
+                        </div>
+                    `;
+                });
+                grid.innerHTML = html;
+            }
+        };
+
+        window.switchMainTab = function(tab) {
+            document.getElementById('tab-movies').classList.remove('active');
+            document.getElementById('tab-series').classList.remove('active');
+            
+            if(tab === 'movies') {
+                document.getElementById('tab-movies').classList.add('active');
+                document.getElementById('movies-container').style.display = 'block';
+                document.getElementById('series-container').style.display = 'none';
+            } else {
+                document.getElementById('tab-series').classList.add('active');
+                document.getElementById('movies-container').style.display = 'none';
+                document.getElementById('series-container').style.display = 'block';
+            }
+        };
+
+        window.openContentDetails = function(id) {
+            const data = contentMap[id];
+            
+            document.getElementById('detail-title').innerText = data.title;
+            document.getElementById('detail-desc').innerText = data.description;
+            document.getElementById('detail-cover').src = data.posterUrl;
+            
+            const episodesSection = document.getElementById('episodes-section');
+            const playBtn = document.getElementById('play-btn');
+            
+            if (data.type === 'series') {
+                episodesSection.style.display = 'block';
+                playBtn.style.display = 'none'; 
+                
+                const grid = document.getElementById('episodes-grid');
+                grid.innerHTML = '';
+                
+                // پیشاندانی ئەڵقەکان
+                if(data.episodes) {
+                    data.episodes.forEach(ep => {
+                        const btn = document.createElement('div');
+                        btn.className = 'episode-btn';
+                        btn.innerText = ep.episodeNumber;
+                        btn.onclick = function() {
+                            document.querySelectorAll('.episode-btn').forEach(b => b.classList.remove('active'));
+                            this.classList.add('active');
+                            window.openLanguageModal(ep.links);
+                        };
+                        grid.appendChild(btn);
+                    });
+                }
+            } else {
+                episodesSection.style.display = 'none';
+                playBtn.style.display = 'flex';
+                playBtn.onclick = () => window.openLanguageModal(data.links);
+            }
+
+            document.getElementById('detailsModal').style.display = 'flex';
+        };
+
+        window.closeDetails = function() {
+            document.getElementById('detailsModal').style.display = 'none';
+        };
+
+        // کردنەوەی پەنجەرەی زمانەکان و ڕێکخستنی لینکەکان
+        window.openLanguageModal = function(linksObj) {
+            document.getElementById('languageModal').style.display = 'flex';
+            
+            // دانانی فرمانی کرتەکردن بۆ هەر زمانێک
+            document.getElementById('btn-lang-badini').onclick = () => window.playVideo(linksObj?.badini, 'کوردی بادینی');
+            document.getElementById('btn-lang-sorani').onclick = () => window.playVideo(linksObj?.sorani, 'کوردی سۆرانی');
+            document.getElementById('btn-lang-arabic').onclick = () => window.playVideo(linksObj?.arabic, 'عەرەبی');
+            document.getElementById('btn-lang-english').onclick = () => window.playVideo(linksObj?.english, 'ئینگلیزی');
+        };
+
+        window.closeLanguageModal = function() {
+            document.getElementById('languageModal').style.display = 'none';
+        };
+
+        window.playVideo = function(url, lang) {
+            if(!url || url.trim() === '') {
+                alert(`ببورە، ژێرنووسی ${lang} بەردەست نییە بۆ ئەم بەرهەمە.`);
+            } else {
+                // ئەگەر لینکەکە هەبوو، ڤیدیۆکە دەکاتەوە لە پەڕەیەکی نوێدا
+                window.open(url, '_blank');
+                window.closeLanguageModal();
+            }
+        };
+
+        // کاتێک پەڕەکە کرایەوە، فەنکشنی هێنانی داتا کار پێ بکە
+        fetchContent();
+    </script>
+</body>
+</html>
