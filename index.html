@@ -104,7 +104,6 @@
         /* شێوازی شەبەکەیی بۆ زنجیرەکان و جۆرە دیاریکراوەکانی فیلم */
         .items-grid {
             display: grid; 
-            /* لێرەدا چارەسەری کێشەکە کراوە بە دیاریکردنی minmax بۆ ئەوەی لە شاشە دەرنەچێت */
             grid-template-columns: repeat(3, minmax(0, 1fr)); 
             gap: 10px;
             padding: 0 15px 15px 15px;
@@ -118,7 +117,7 @@
         }
         .items-grid .movie-poster { 
             width: 100%; 
-            aspect-ratio: 2 / 3; /* دەستەبەرکردنی شێوەی پۆستەری فیلم */
+            aspect-ratio: 2 / 3; 
             height: auto;
             object-fit: cover;
         }
@@ -261,7 +260,6 @@
         <div class="lang-modal-box">
             <div class="lang-modal-title">هەڵبژاردنی زمان یان ژێرنووس</div>
             
-            <!-- دوگمەکان لێرەدا بە داینامیکی دروست دەکرێن -->
             <div id="dynamic-lang-btns"></div>
             
             <button class="lang-close-btn" onclick="closeLanguageModal()">پاشگەزبوونەوە</button>
@@ -306,6 +304,20 @@
                         allSeries.push(data);
                     }
                 });
+
+                // ==========================================
+                // زیادکردنی ڕیزکردن (گەڕان بەدوای سۆرانیدا)
+                // ئەو فیلم و زنجیرانەی سۆرانییان هەیە دێنە پێشەوە
+                // ==========================================
+                const sortBySorani = (a, b) => {
+                    const aHasSorani = (a.links && a.links.sorani) ? 1 : 0;
+                    const bHasSorani = (b.links && b.links.sorani) ? 1 : 0;
+                    return bHasSorani - aHasSorani; // یەکەم ئەو دانانەی کە 1ن (سۆرانییان هەیە)
+                };
+
+                allMovies.sort(sortBySorani);
+                allSeries.sort(sortBySorani);
+                // ==========================================
 
                 document.getElementById('loading-message').style.display = 'none';
                 document.getElementById('movies-container').style.display = 'block';
@@ -459,7 +471,6 @@
             document.getElementById('detail-desc').innerText = data.description || '';
             document.getElementById('detail-cover').src = data.posterUrl || '';
             
-            // پیشاندانی زمانە بەردەستەکان پێش پەخشکردن
             const langTextEl = document.getElementById('available-langs-text');
             let availableLangs = [];
             if(data.links) {
@@ -478,7 +489,6 @@
             const episodesSection = document.getElementById('episodes-section');
             const playBtn = document.getElementById('play-btn');
             
-            // ئەگەر جۆرەکەی زنجیرە بوو یان فیلمەکە چەند بەشێکی هەبوو
             if (data.type === 'series' || (data.episodes && data.episodes.length > 0)) {
                 episodesSection.style.display = 'block';
                 playBtn.style.display = 'none'; 
@@ -514,7 +524,6 @@
             document.getElementById('detailsModal').style.display = 'none';
         };
 
-        // نیشاندانی تەنها ئەو زمانانەی کە بەردەستن لەگەڵ دوگمەی بێ وەرگێڕان
         window.openLanguageModal = function(linksObj, videoUrl) {
             document.getElementById('languageModal').style.display = 'flex';
             
