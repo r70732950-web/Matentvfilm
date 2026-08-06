@@ -74,7 +74,7 @@
             font-size: 12px; text-align: center; margin-top: 5px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        /* لێرەدا کێشەی وێنەکان چارەسەر کراوە بۆ ئەوەی لە قەبارەی خۆیان دەرنەچن */
+        
         .movie-poster {
             width: 100%; height: 100%; border-radius: 12px;
             object-fit: cover; object-position: center; border: 2px solid #222;
@@ -105,11 +105,19 @@
         .items-grid {
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
-            gap: 12px;
+            gap: 10px;
             padding: 0 15px 15px 15px;
         }
-        .items-grid .movie-card { width: 100%; }
-        .items-grid .movie-poster { aspect-ratio: 2 / 3; }
+        .items-grid .movie-card { 
+            width: 100%; 
+            display: flex;
+            flex-direction: column;
+        }
+        .items-grid .movie-poster { 
+            width: 100%; 
+            height: 150px; /* قەبارەی گونجاو هاوشێوەی پەڕەی سەرەکی */
+            object-fit: cover;
+        }
 
         /* مۆدالی زانیارییەکان */
         .details-modal {
@@ -217,6 +225,7 @@
             </div>
     </div>
 
+    <!-- مۆدالی زانیارییەکان -->
     <div id="detailsModal" class="details-modal">
         <div class="details-header">
             <button class="close-btn" onclick="closeDetails()"><i class="fas fa-times"></i></button>
@@ -225,6 +234,10 @@
         
         <div class="details-info">
             <h1 class="details-title" id="detail-title">ناوی بەرهەم</h1>
+            
+            <!-- پیشاندانی زمانە بەردەستەکان پێش پەخشکردن -->
+            <p id="available-langs-text" style="font-size: 13px; color: var(--gold-color); margin-bottom: 10px;"></p>
+            
             <p class="details-desc" id="detail-desc">وەسفی بەرهەم...</p>
             
             <button class="play-btn" id="play-btn">
@@ -239,13 +252,14 @@
         </div>
     </div>
 
+    <!-- مۆدالی هەڵبژاردنی زمان -->
     <div id="languageModal" class="lang-modal-overlay">
         <div class="lang-modal-box">
             <div class="lang-modal-title">هەڵبژاردنی زمان یان ژێرنووس</div>
-            <button class="lang-btn" id="btn-lang-badini">کوردی بادینی</button>
-            <button class="lang-btn" id="btn-lang-sorani">کوردی سۆرانی</button>
-            <button class="lang-btn" id="btn-lang-arabic">عەرەبی</button>
-            <button class="lang-btn" id="btn-lang-english">ئینگلیزی</button>
+            
+            <!-- دوگمەکان لێرەدا بە داینامیکی دروست دەکرێن -->
+            <div id="dynamic-lang-btns"></div>
+            
             <button class="lang-close-btn" onclick="closeLanguageModal()">پاشگەزبوونەوە</button>
         </div>
     </div>
@@ -441,15 +455,31 @@
             document.getElementById('detail-desc').innerText = data.description || '';
             document.getElementById('detail-cover').src = data.posterUrl || '';
             
+            // -- دەرهێنان و پیشاندانی زمانە بەردەستەکان پێش پەخشکردن --
+            const langTextEl = document.getElementById('available-langs-text');
+            let availableLangs = [];
+            if(data.links) {
+                if(data.links.badini) availableLangs.push("بادینی");
+                if(data.links.sorani) availableLangs.push("سۆرانی");
+                if(data.links.arabic) availableLangs.push("عەرەبی");
+                if(data.links.english) availableLangs.push("ئینگلیزی");
+            }
+            
+            if (availableLangs.length > 0) {
+                langTextEl.innerText = "زمانە بەردەستەکان: " + availableLangs.join(" ، ");
+            } else {
+                langTextEl.innerText = "وەرگێڕان بەردەست نییە";
+            }
+            // --------------------------------------------------------
+            
             const episodesSection = document.getElementById('episodes-section');
             const playBtn = document.getElementById('play-btn');
             
-            // لێرەدا پشکنین دەکەین: ئەگەر جۆرەکەی زنجیرە بوو یان فیلمەکە چەند بەشێکی هەبوو
+            // ئەگەر جۆرەکەی زنجیرە بوو یان فیلمەکە چەند بەشێکی هەبوو
             if (data.type === 'series' || (data.episodes && data.episodes.length > 0)) {
                 episodesSection.style.display = 'block';
                 playBtn.style.display = 'none'; 
                 
-                // گۆڕینی سەردێڕ بەپێی ئەوەی فیلمە یان زنجیرە
                 document.getElementById('episodes-title-text').innerText = data.type === 'series' ? 'هەڵبژاردنی ئەڵقە:' : 'هەڵبژاردنی بەش (جزئـ):';
                 
                 const grid = document.getElementById('episodes-grid');
@@ -481,13 +511,23 @@
             document.getElementById('detailsModal').style.display = 'none';
         };
 
+        // -- نوێکردنەوەی فانکشنی کردنەوەی مۆدالی زمانەکان --
         window.openLanguageModal = function(linksObj, videoUrl) {
             document.getElementById('languageModal').style.display = 'flex';
             
-            document.getElementById('btn-lang-badini').onclick = () => window.playVideo(linksObj?.badini, 'کوردی بادینی', videoUrl);
-            document.getElementById('btn-lang-sorani').onclick = () => window.playVideo(linksObj?.sorani, 'کوردی سۆرانی', videoUrl);
-            document.getElementById('btn-lang-arabic').onclick = () => window.playVideo(linksObj?.arabic, 'عەرەبی', videoUrl);
-            document.getElementById('btn-lang-english').onclick = () => window.playVideo(linksObj?.english, 'ئینگلیزی', videoUrl);
+            const btnsContainer = document.getElementById('dynamic-lang-btns');
+            btnsContainer.innerHTML = ''; // پاککردنەوەی دوگمەکانی پێشوو
+            
+            // دروستکردنی دوگمە تەنها بۆ ئەو زمانانەی کە لینکیان هەیە
+            if (linksObj) {
+                if (linksObj.badini) btnsContainer.innerHTML += `<button class="lang-btn" onclick="window.playVideo('${linksObj.badini}', 'کوردی بادینی', '${videoUrl}')">کوردی بادینی</button>`;
+                if (linksObj.sorani) btnsContainer.innerHTML += `<button class="lang-btn" onclick="window.playVideo('${linksObj.sorani}', 'کوردی سۆرانی', '${videoUrl}')">کوردی سۆرانی</button>`;
+                if (linksObj.arabic) btnsContainer.innerHTML += `<button class="lang-btn" onclick="window.playVideo('${linksObj.arabic}', 'عەرەبی', '${videoUrl}')">عەرەبی</button>`;
+                if (linksObj.english) btnsContainer.innerHTML += `<button class="lang-btn" onclick="window.playVideo('${linksObj.english}', 'ئینگلیزی', '${videoUrl}')">ئینگلیزی</button>`;
+            }
+            
+            // زیادکردنی دوگمەی بێ وەرگێڕان بۆ هەموو حاڵەتەکان
+            btnsContainer.innerHTML += `<button class="lang-btn" style="background-color: #4a5568; border-color: #2d3748;" onclick="window.playVideo('', 'بێ وەرگێڕان', '${videoUrl}')">بێ وەرگێڕان (زمانی ڕەسەن)</button>`;
         };
 
         window.closeLanguageModal = function() {
