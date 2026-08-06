@@ -104,9 +104,12 @@
         /* شێوازی شەبەکەیی بۆ زنجیرەکان و جۆرە دیاریکراوەکانی فیلم */
         .items-grid {
             display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
+            /* لێرەدا چارەسەری کێشەکە کراوە بە دیاریکردنی minmax بۆ ئەوەی لە شاشە دەرنەچێت */
+            grid-template-columns: repeat(3, minmax(0, 1fr)); 
             gap: 10px;
             padding: 0 15px 15px 15px;
+            width: 100%;
+            box-sizing: border-box;
         }
         .items-grid .movie-card { 
             width: 100%; 
@@ -115,7 +118,8 @@
         }
         .items-grid .movie-poster { 
             width: 100%; 
-            height: 150px; /* قەبارەی گونجاو هاوشێوەی پەڕەی سەرەکی */
+            aspect-ratio: 2 / 3; /* دەستەبەرکردنی شێوەی پۆستەری فیلم */
+            height: auto;
             object-fit: cover;
         }
 
@@ -455,7 +459,7 @@
             document.getElementById('detail-desc').innerText = data.description || '';
             document.getElementById('detail-cover').src = data.posterUrl || '';
             
-            // -- دەرهێنان و پیشاندانی زمانە بەردەستەکان پێش پەخشکردن --
+            // پیشاندانی زمانە بەردەستەکان پێش پەخشکردن
             const langTextEl = document.getElementById('available-langs-text');
             let availableLangs = [];
             if(data.links) {
@@ -470,7 +474,6 @@
             } else {
                 langTextEl.innerText = "وەرگێڕان بەردەست نییە";
             }
-            // --------------------------------------------------------
             
             const episodesSection = document.getElementById('episodes-section');
             const playBtn = document.getElementById('play-btn');
@@ -511,14 +514,13 @@
             document.getElementById('detailsModal').style.display = 'none';
         };
 
-        // -- نوێکردنەوەی فانکشنی کردنەوەی مۆدالی زمانەکان --
+        // نیشاندانی تەنها ئەو زمانانەی کە بەردەستن لەگەڵ دوگمەی بێ وەرگێڕان
         window.openLanguageModal = function(linksObj, videoUrl) {
             document.getElementById('languageModal').style.display = 'flex';
             
             const btnsContainer = document.getElementById('dynamic-lang-btns');
-            btnsContainer.innerHTML = ''; // پاککردنەوەی دوگمەکانی پێشوو
+            btnsContainer.innerHTML = ''; 
             
-            // دروستکردنی دوگمە تەنها بۆ ئەو زمانانەی کە لینکیان هەیە
             if (linksObj) {
                 if (linksObj.badini) btnsContainer.innerHTML += `<button class="lang-btn" onclick="window.playVideo('${linksObj.badini}', 'کوردی بادینی', '${videoUrl}')">کوردی بادینی</button>`;
                 if (linksObj.sorani) btnsContainer.innerHTML += `<button class="lang-btn" onclick="window.playVideo('${linksObj.sorani}', 'کوردی سۆرانی', '${videoUrl}')">کوردی سۆرانی</button>`;
@@ -526,7 +528,6 @@
                 if (linksObj.english) btnsContainer.innerHTML += `<button class="lang-btn" onclick="window.playVideo('${linksObj.english}', 'ئینگلیزی', '${videoUrl}')">ئینگلیزی</button>`;
             }
             
-            // زیادکردنی دوگمەی بێ وەرگێڕان بۆ هەموو حاڵەتەکان
             btnsContainer.innerHTML += `<button class="lang-btn" style="background-color: #4a5568; border-color: #2d3748;" onclick="window.playVideo('', 'بێ وەرگێڕان', '${videoUrl}')">بێ وەرگێڕان (زمانی ڕەسەن)</button>`;
         };
 
